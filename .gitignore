@@ -1,0 +1,26 @@
+# Frontend
+frontend/react-test/node_modules
+frontend/react-test/build
+frontend/react-test/.env
+frontend/react-test/.pnp
+frontend/react-test/.pnp.js
+frontend/react-test/coverage
+frontend/react-test/build
+frontend/react-test/.DS_Store
+frontend/react-test/.env.local
+frontend/react-test/.env.development.local
+frontend/react-test/.env.test.local
+frontend/react-test/.env.production.local
+frontend/react-test/npm-debug.log*
+frontend/react-test/yarn-debug.log*
+frontend/react-test/yarn-error.log*
+
+# Backend
+backend/.venv/
+backend/__pycache__/
+backend/*.py[cod]
+backend/*$py.class
+backend/.pytest_cache/
+
+# Other
+.vscode
