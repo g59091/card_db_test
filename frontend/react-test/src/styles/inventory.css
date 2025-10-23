@@ -1,0 +1,31 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 2rem;
+    background-color: #f4f4f4;
+}
+h1 {
+    color: #333;
+}
+.card-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+}
+.card-box {
+    background-color: white;
+    border: 1px solid #ccc;
+    padding: 1rem;
+    width: 250px;
+    box-shadow: 2px 2px 6px rgba(0,0,0,0.1);
+    border-radius: 8px;
+}
+.card-box img {
+    width: 100%;
+    border-radius: 4px;
+}
+.card-info {
+    margin-top: 0.5rem;
+}
+.nav {
+    margin-bottom: 1.5rem;
+}

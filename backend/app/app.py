@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, session, url_for
 from dotenv import load_dotenv
 import mysql.connector
+
 import bcrypt, os, requests
 
 # Flask load
@@ -69,7 +70,7 @@ def logout():
   return redirect(url_for("app.login"))
 
 # search route
-@app.route("/", methods=["POST", "GET"])
+@app.route("/search", methods=["POST", "GET"])
 def search():
   result, message, in_inv_flag = None, None, False
 
