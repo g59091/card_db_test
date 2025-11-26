@@ -1,13 +1,19 @@
 from flask import Flask, render_template, request, redirect, session, url_for
 from dotenv import load_dotenv
 import mysql.connector
-
+from flask_cors import CORS, cross_origin
 import bcrypt, os, requests
 
 # Flask load
 load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY")
+
+# allow all origins (good for dev)
+# CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
+
+CORS(app)
+# app.config['CORS_HEADERS'] = "Content-Type"
 
 # MySQL DB config
 db_config = {
@@ -17,6 +23,15 @@ db_config = {
   'database': os.getenv("DB_NAME")
 }
 
+# Goal: Configure FireStore connection inside app.py 
+# import firebase_admin
+# from firebase_admin import credentials, firestore
+
+# cred = credentials.Certificate("firebase-service-account.json")
+# firebase_admin.initialize_app(cred)
+
+# db = firestore.client()
+
 # auth routes
 @app.route("/register", methods=['POST', 'GET'])
 def register():
@@ -25,7 +40,8 @@ def register():
     email = request.form["email"]
     hashed_password = bcrypt.hashpw(request.form["password"].encode("utf-8"), bcrypt.gensalt())
 
-    # insert into table
+    # Goal: Migrate to using Users Colection
+    # For each UserID create Inventory Collection /w Card Details
     conn = mysql.connector.connect(**db_config)
     cursor = conn.cursor()
     cursor.execute("""
@@ -45,7 +61,9 @@ def login():
     username = request.form["username"]
     #password = request.form["password"]
 
-    # check in table
+    # Goal: Migrate to Using Users Collection
+    # Check across each UserID find the Details Collection
+    # Check Users info
     conn = mysql.connector.connect(**db_config)
     cursor = conn.cursor(dictionary=True)
     cursor.execute("""
@@ -71,13 +89,17 @@ def logout():
 
 # search route
 @app.route("/search", methods=["POST", "GET"])
+@cross_origin()
 def search():
   result, message, in_inv_flag = None, None, False
 
   if request.method == "POST":
-    card_name = request.form["card_name"]
+    data = request.get_json()
+    card_name = data.get("card_name")
+    print(card_name)
 
-    # check card if in table
+    # Goal:Try searching through Users Collection 
+    # Check Inventory Collection if Card is present
     conn = mysql.connector.connect(**db_config)
     cursor = conn.cursor(dictionary=True)
     try:
@@ -87,7 +109,7 @@ def search():
       results = cursor.fetchall()
       result = results[0] if results else None
 
-      # return result or pull on empty card
+      # Adjust: Approach searching for Card inside of Inventory
       if result:
         card_id = result['card_id']
         user_id = session.get("user_id", 1)
@@ -99,14 +121,14 @@ def search():
       else:
         magic_url = f"https://api.scryfall.com/cards/named?fuzzy={card_name}"
         response = requests.get(magic_url)
-
+        print(response)
         # on successful response
         if response.status_code == 200:
           card_data = response.json()
           set_name = card_data['set_name']
           release_date = card_data['released_at']
 
-          # check for existing set
+          # Adjust: Consider removing these executes
           cursor.execute("""
             SELECT set_id FROM cardset WHERE name = %s
           """, (set_name))
@@ -121,7 +143,7 @@ def search():
             conn.commit()
             set_id = cursor.lastrowid
 
-          # add card
+          # Goal: Refactor to add Card Details and Inventory
           cursor.execute("""
             INSERT INTO card (name, type, rarity, mana_cost, rules_text, image_url, set_id)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -136,7 +158,7 @@ def search():
           ))
           conn.commit()
 
-          # re-check on inserted card
+          # Adjust: Consider removing this execute
           cursor.execute("""
             SELECT * FROM card WHERE name LIKE %s
           """, (card_data['name']))
@@ -147,7 +169,8 @@ def search():
     finally:
       cursor.close()
       conn.close()
-  return render_template("search.html", result=result, message=message, in_inv_flag=in_inv_flag)
+  # return render_template("search.html", result=result, message=message, in_inv_flag=in_inv_flag)
+  return {"result" :result, "message":message, "in_inv_flag":in_inv_flag}
 
 # inventory routes
 @app.route("/add", methods=["POST"])
@@ -156,6 +179,8 @@ def add_to_inventory():
   condition = request.form.get("condition", "Near Mint")
   user_id = session.get("user_id", 1)
 
+  # Adjust: Consider Removing these executes
+  # Consider if we need extra FireBase master card list 
   conn = mysql.connector.connect(**db_config)
   cursor = conn.cursor()
   try:
@@ -181,6 +206,8 @@ def add_to_inventory():
     conn.close()
   return redirect(url_for("app.search"))
 
+# Adjust: Consider Removing these executes
+# Consider if we need extra FireBase master card list 
 @app.route("/remove", methods=["POST"])
 def remove_from_inventory():
   card_id = request.form.get("card_id")
@@ -219,6 +246,7 @@ def view_inventory():
     return redirect(url_for("app.login"))
   user_id = session["user_id"]
 
+# Adjust: Refactor to view Card Details from Inventory
   conn = mysql.connector.connect(**db_config)
   cursor = conn.cursor(dictionary=True)
   try:
