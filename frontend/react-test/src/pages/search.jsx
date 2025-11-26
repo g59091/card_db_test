@@ -8,14 +8,17 @@ export default function Search() {
     const [result, setResult] = useState(null);
     const [inInventory, setInInventory] = useState(false);
     const [error, setError] = useState("");
+    const API_URL = "http://localhost:5000";
+    
+    //`${API_URL}/search`
 
     const handleSearch = async (e) => {
         e.preventDefault();
         setMessage("");
         setResult(null);
-        //console.log(cardName);
+        console.log(cardName);
         try {
-             const res = await fetch("/search", {
+             const res = await fetch(`${API_URL}/search`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
