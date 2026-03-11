@@ -13,7 +13,6 @@ app.secret_key = os.getenv("SECRET_KEY")
 
 # allow all origins (good for dev)
 # CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
-
 CORS(app)
 
 # app.config['CORS_HEADERS'] = "Content-Type"
@@ -26,13 +25,15 @@ CORS(app)
 #   'database': os.getenv("DB_NAME")
 # }
 
-
+# Firebase load
 cred = credentials.Certificate(
   json.loads(os.getenv("FIREBASE_SERVICE_ACCOUNT"))
 )
 firebase_admin.initialize_app(cred)
-
 db = firestore.client()
+
+# Card checking URLs (expand later)
+SCRYFALL_MAGIC_PREFIX = "https://api.scryfall.com/cards/named?version=normal&fuzzy="
 
 # auth routes
 @app.route("/register", methods=['POST', 'GET'])
@@ -54,16 +55,6 @@ def register():
       "Username": username
     })
 
-    # conn = mysql.connector.connect(**db_config)
-    # cursor = conn.cursor()
-    # cursor.execute("""
-    #     INSERT INTO user (username, email, pass_hash)
-    #     VALUES (%s, %s, %s)
-    # """, (username, email, hashed_password))
-    # conn.commit()
-    # cursor.close()
-    # conn.close()
-
     return redirect(url_for("app.login"))
   return render_template("register.html")
 
@@ -75,15 +66,6 @@ def login():
 
     # Goal: Migrate to Using Users Collection
     # Check across each UserID find the Details Collection
-    # Check Users info
-    # conn = mysql.connector.connect(**db_config)
-    # cursor = conn.cursor(dictionary=True)
-    # cursor.execute("""
-    #   SELECT * FROM user WHERE username = %s
-    # """, (username))
-    # user = cursor.fetchone()
-    # cursor.close()
-    # conn.close()
     sign_up_ref =  db.collection("Users").document(username).collection("Details").document("SignUpDetails")
     user = sign_up_ref.get()
 
@@ -124,70 +106,43 @@ def search():
     # results = cursor.fetchall()
     # result = results[0] if results else None
     inv_ref =  db.collection("Users").document(session["username"]).collection("Inventory")
-    cards = inv_ref.where("CardName", "==", card_name).get()
+    inv_cards = inv_ref.where("CardName", "==", card_name).get()
+    type(inv_cards)
 
     # Adjust: Approach searching for Card inside of Inventory
-    if result:
-      card_id = result['card_id']
-      user_id = session.get("user_id", 1)
-      cursor.execute("""
-        SELECT * FROM usercardinventory
-        WHERE user_id = %s AND card_id = %s
-      """, (user_id, card_id))
-      in_inv_flag = cursor.fetchone() is not None
+    if inv_cards:
+      result = inv_cards
+      in_inv_flag = True
+      message = "Cards found in inv."
     else:
-      magic_url = f"https://api.scryfall.com/cards/named?fuzzy={card_name}"
+      # magic_url = f"https://api.scryfall.com/cards/named?fuzzy={card_name}"
+      magic_url = SCRYFALL_MAGIC_PREFIX + card_name
       response = requests.get(magic_url)
       print(response)
       # on successful response
       if response.status_code == 200:
         card_data = response.json()
-        set_name = card_data['set_name']
-        release_date = card_data['released_at']
+        # scryfall only returns ONE card or error
+        card_name = card_data['name']
+        card_mana = card_data['mana_cost']
+        card_image_url = card_data['image_uris']['normal']
+        card_rarity = card_data['rarity']
+        card_rules_text = card_data['oracle_text']
+        card_type = "(" + card_data['set_name'] + card_data['collector_number'] + ")"
+        result = {
+          "CardImageURLs": card_image_url,
+          "CardManaCost": card_mana,
+          "CardName": card_name,
+          "CardRarity": card_rarity,
+          "CardRulesText": card_rules_text,
+          "CardType": card_type
+        }
 
-        # Adjust: Consider removing these executes
-        cursor.execute("""
-          SELECT set_id FROM cardset WHERE name = %s
-        """, (set_name))
-        set_row = cursor.fetchone()
-
-        if set_row:
-          set_id = set_row['set_id']
-        else:
-          cursor.execute("""
-            INSERT INTO cardset (name, release_date) VALUES (%s, %s)
-          """, (set_name, release_date))
-          conn.commit()
-          set_id = cursor.lastrowid
-
-        # Goal: Refactor to add Card Details and Inventory
-        cursor.execute("""
-          INSERT INTO card (name, type, rarity, mana_cost, rules_text, image_url, set_id)
-          VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (
-          card_data['name'],
-          card_data['type_line'],
-          card_data['rarity'].capitalize(),
-          card_data.get('mana_cost', ''),
-          card_data.get('oracle_text', ''),
-          card_data['image_uris']['normal'],
-          set_id
-        ))
-        conn.commit()
-
-        # Adjust: Consider removing this execute
-        cursor.execute("""
-          SELECT * FROM card WHERE name LIKE %s
-        """, (card_data['name']))
-        result = cursor.fetchone()
         message = "magic_url - card found"
       else:
         message = "magic_url - card not found"
-    # finally:
-    #   cursor.close()
-    #   conn.close()
   # return render_template("search.html", result=result, message=message, in_inv_flag=in_inv_flag)
-  return {"result" :result, "message":message, "in_inv_flag":in_inv_flag}
+  return {"result": result, "message": message, "in_inv_flag": in_inv_flag}
 
 # inventory routes
 @app.route("/add", methods=["POST"])

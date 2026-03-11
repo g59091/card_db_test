@@ -17,6 +17,7 @@ frontend/react-test/yarn-error.log*
 
 # Backend
 backend/myenv/
+backend/.venv/
 backend/__pycache__/
 backend/*.py[cod]
 backend/*$py.class

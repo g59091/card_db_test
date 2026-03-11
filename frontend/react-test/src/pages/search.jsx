@@ -11,7 +11,6 @@ export default function Search() {
     const API_URL = "http://localhost:5000";
     
     //`${API_URL}/search`
-
     const handleSearch = async (e) => {
         e.preventDefault();
         setMessage("");
@@ -47,12 +46,12 @@ export default function Search() {
         }
     };
 
-    const handleAdd = async (card_id, condition) => {
+    const handleAdd = async (result) => {
         try {
             const response = await fetch("/add", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ card_id, condition }),
+                body: JSON.stringify({ result }),
             });
 
            if (!response.ok) {
@@ -125,8 +124,9 @@ export default function Search() {
                         <form
                             onSubmit={(e) => {
                                 e.preventDefault();
-                                const condition = e.target.condition.value;
-                                handleAdd(result.card_id, condition);
+                                // const condition = e.target.condition.value;
+                                // handleAdd(result.card_id, condition);
+                                handleAdd(result);
                             }}
                         >
                             <label htmlFor="condition">Condition:</label>{" "}
